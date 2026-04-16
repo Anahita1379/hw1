@@ -8,7 +8,29 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
+# ######################################
+########################################
+from eecs148b_hw1.train_bpe import train_bpe
+from eecs148b_hw1.tokenizer import Tokenizer
+from eecs148b_hw1.linear import Linear
+from eecs148b_hw1.embedding import Embedding
+from eecs148b_hw1.layernorm import LayerNorm
+from eecs148b_hw1.positionwise_feedforward import PositionWiseFeedForward
+from eecs148b_hw1.sinusoidal_positional_embedding import SinusoidalPositionalEncoding
+from eecs148b_hw1.softmax import softmax
+from eecs148b_hw1.scaled_dot_product_attention import scaled_dot_product_attention
+from eecs148b_hw1.multihead_self_attention import MultiHeadSelfAttention
+from eecs148b_hw1.transformer_block import TransformerBlock
+from eecs148b_hw1.transformer_lm import TransformerLM
+from eecs148b_hw1.cross_entropy import cross_entropy_loss
+from eecs148b_hw1.data_loading import get_batch
 
+# ######################################
+########################################
+
+
+# ----------------------------------------------
+# ---------------------------------------------
 def run_linear(
     d_in: int,
     d_out: int,
@@ -27,9 +49,13 @@ def run_linear(
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
-    raise NotImplementedError
+    linear_layer = Linear(d_in, d_out,device=weights.device, dtype=weights.dtype)
+    linear_layer.load_state_dict({"weight": weights})
+    
+    return linear_layer(in_features)
 
-
+# ----------------------------------------------
+# ---------------------------------------------
 def run_embedding(
     vocab_size: int,
     d_model: int,
@@ -48,8 +74,14 @@ def run_embedding(
     Returns:
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
-    raise NotImplementedError
+    
+    embedding = Embedding(vocab_size, d_model, device=weights.device, dtype=weights.dtype)
+    embedding.load_state_dict({"embedding": weights})
+    
+    return embedding(token_ids)
 
+# ----------------------------------------------
+# ---------------------------------------------
 
 def run_ffn(
     d_model: int,
@@ -71,15 +103,32 @@ def run_ffn(
     Returns:
         Float[Tensor, "... d_model"]: Output embeddings of the same shape as the input embeddings.
     """
+    
+    
+    ffn = PositionWiseFeedForward(
+        d_model=d_model,
+        d_ff=d_ff,
+        device=w1_weight.device,
+        dtype=w1_weight.dtype,
+    )
+    # ffn.load_state_dict({
+    #     "fc1.weight": w1_weight,
+    #     "fc2.weight": w2_weight,
+    # })
+    ffn.fc1.weight.data = w1_weight
+    ffn.fc2.weight.data = w2_weight
+    
+    
     # Example:
     # If your state dict keys match, you can use `load_state_dict()`
     # ffn.load_state_dict({"fc1.weight": w1_weight, "fc2.weight": w2_weight})
     # You can also manually assign the weights
     # ffn.fc1.weight.data = w1_weight
     # ffn.fc2.weight.data = w2_weight
-    raise NotImplementedError
+    return ffn(in_features)
 
-
+# ----------------------------------------------
+# ---------------------------------------------
 def run_layernorm(
     d_model: int,
     eps: float,
@@ -100,18 +149,31 @@ def run_layernorm(
     Returns:
         Float[Tensor, "... d_model"]: Tensor with the output of running LayerNorm on `in_features`.
     """
-    raise NotImplementedError
-
-
+    
+    norm_layer = LayerNorm(d_model, eps, device=weight.device, dtype=weight.dtype )
+    norm_layer.load_state_dict({
+        "weight": weight,
+        "bias": bias,
+    })
+    
+    return norm_layer(in_features)
+    
+# ----------------------------------------------
+# ---------------------------------------------
 def run_sinusoidal_pe(
     d_model: int,
     max_seq_len: int,
     token_positions: Int[Tensor, " ... sequence_length"],
 ) -> Float[Tensor, " ... sequence_length d_model"]:
     """Return sinusoidal positional embeddings for the given token positions."""
-    raise NotImplementedError
+    
+    
+    pe = SinusoidalPositionalEncoding(d_model, max_seq_len, device=token_positions.device )
+    return pe(token_positions)
 
 
+# ----------------------------------------------
+# ---------------------------------------------
 def run_scaled_dot_product_attention(
     Q: Float[Tensor, " ... queries d_k"],
     K: Float[Tensor, " ... keys d_k"],
@@ -130,9 +192,11 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    raise NotImplementedError
+    return scaled_dot_product_attention(Q, K, V, mask)
 
 
+# ----------------------------------------------
+# ---------------------------------------------
 def run_multihead_self_attention(
     d_model: int,
     num_heads: int,
@@ -164,9 +228,25 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    attn = MultiHeadSelfAttention(
+        d_model=d_model,
+        num_heads=num_heads,
+        device=q_proj_weight.device,
+        dtype=q_proj_weight.dtype,
+    )
+    
+    attn.load_state_dict({
+        "q_proj.weight": q_proj_weight,
+        "k_proj.weight": k_proj_weight,
+        "v_proj.weight": v_proj_weight,
+        "o_proj.weight": o_proj_weight,
+    })
+    
+    
+    return attn(in_features)
 
-
+# ----------------------------------------------
+# ---------------------------------------------
 def run_transformer_block(
     d_model: int,
     num_heads: int,
@@ -233,9 +313,27 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features.
     """
-    raise NotImplementedError
+    
+    
+    block = TransformerBlock(d_model, num_heads, d_ff, device=in_features.device, dtype=in_features.dtype, )
+    block.load_state_dict({
+        "layerNorm1.weight": weights["ln1.weight"],
+        "layerNorm1.bias": weights["ln1.bias"],
+        "multiHeadAttn.q_proj.weight": weights["attn.q_proj.weight"],
+        "multiHeadAttn.k_proj.weight": weights["attn.k_proj.weight"],
+        "multiHeadAttn.v_proj.weight": weights["attn.v_proj.weight"],
+        "multiHeadAttn.o_proj.weight": weights["attn.output_proj.weight"],
+        "layerNorm2.weight": weights["ln2.weight"],
+        "layerNorm2.bias": weights["ln2.bias"],
+        "ffn.fc1.weight": weights["ffn.fc1.weight"],
+        "ffn.fc2.weight": weights["ffn.fc2.weight"],
+        })
 
-
+    return block(in_features)
+    
+    
+# ----------------------------------------------
+# ---------------------------------------------
 def run_transformer_lm(
     vocab_size: int,
     context_length: int,
@@ -317,9 +415,46 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    lm_model = TransformerLM(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        d_model=d_model,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        device=in_indices.device,
+        dtype=next(iter(weights.values())).dtype,
+    )
+    
+    mapped_state_dict = {
+        "token_embeddings.embedding": weights["token_embeddings.weight"],
+        "layerNorm_final.weight": weights["ln_final.weight"],
+        "layerNorm_final.bias": weights["ln_final.bias"],
+        "lm_head.weight": weights["lm_head.weight"],
+    }
+    
+    for i in range(num_layers):
+        mapped_state_dict[f"layers.{i}.layerNorm1.weight"] = weights[f"layers.{i}.ln1.weight"]
+        mapped_state_dict[f"layers.{i}.layerNorm1.bias"] = weights[f"layers.{i}.ln1.bias"]
 
+        mapped_state_dict[f"layers.{i}.multiHeadAttn.q_proj.weight"] = weights[f"layers.{i}.attn.q_proj.weight"]
+        mapped_state_dict[f"layers.{i}.multiHeadAttn.k_proj.weight"] = weights[f"layers.{i}.attn.k_proj.weight"]
+        mapped_state_dict[f"layers.{i}.multiHeadAttn.v_proj.weight"] = weights[f"layers.{i}.attn.v_proj.weight"]
+        mapped_state_dict[f"layers.{i}.multiHeadAttn.o_proj.weight"] = weights[f"layers.{i}.attn.output_proj.weight"]
 
+        mapped_state_dict[f"layers.{i}.layerNorm2.weight"] = weights[f"layers.{i}.ln2.weight"]
+        mapped_state_dict[f"layers.{i}.layerNorm2.bias"] = weights[f"layers.{i}.ln2.bias"]
+
+        mapped_state_dict[f"layers.{i}.ffn.fc1.weight"] = weights[f"layers.{i}.ffn.fc1.weight"]
+        mapped_state_dict[f"layers.{i}.ffn.fc2.weight"] = weights[f"layers.{i}.ffn.fc2.weight"]
+        
+    lm_model.load_state_dict(mapped_state_dict)
+
+    return lm_model(in_indices)
+    
+
+# ----------------------------------------------
+# ---------------------------------------------
 def run_get_batch(
     dataset: npt.NDArray, batch_size: int, context_length: int, device: str
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -340,9 +475,11 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
-    raise NotImplementedError
+    
+    return get_batch(dataset, batch_size, context_length, device)
 
-
+# ----------------------------------------------
+# ---------------------------------------------
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
     """
     Given a tensor of inputs, return the output of softmaxing the given `dim`
@@ -356,7 +493,7 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    raise NotImplementedError
+    return softmax(in_features, dim=dim)
 
 
 def run_cross_entropy(
@@ -374,9 +511,11 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    return cross_entropy_loss(inputs, targets)
 
 
+# ----------------------------------------------
+# ---------------------------------------------
 def get_tokenizer(
     vocab: dict[int, bytes],
     merges: list[tuple[bytes, bytes]],
@@ -397,9 +536,10 @@ def get_tokenizer(
     Returns:
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
-    raise NotImplementedError
+    return Tokenizer(vocab, merges, special_tokens)
 
-
+# ----------------------------------------------
+# ---------------------------------------------
 def run_train_bpe(
     input_path: str | os.PathLike,
     vocab_size: int,
@@ -427,4 +567,5 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    raise NotImplementedError
+    
+    return train_bpe(input_path, vocab_size, special_tokens)
