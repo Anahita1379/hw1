@@ -39,15 +39,5 @@ def cross_entropy_loss(logits: Float[Tensor, " batch_size vocab_size"], targets:
     return loss.mean()
 
 
-'''
 
-Perplexity explanation
-
-Perplexity is often a better evaluation metric because it is easier to interpret: 
-it measures the model’s effective uncertainty, or roughly how many plausible next-token choices the model is considering on average. 
-Lower perplexity means the model assigns higher probability to the true sequence, making it a more intuitive summary of language-model quality than raw cross-entropy
-
-'''
-
-    
     

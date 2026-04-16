@@ -27,14 +27,6 @@ of False should be zero
 
 '''
 
-'''
-For the masking insight:
-
-Set every masked-out pre-softmax score to negative infinity (or a very large negative number), 
-so after softmax those positions get probability 0.
-'''
-
-
 
 def scaled_dot_product_attention(
     Q: Float[Tensor, " ... queries d_k"],

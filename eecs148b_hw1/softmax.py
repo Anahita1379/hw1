@@ -4,8 +4,6 @@ should take two parameters: a tensor and a dimension i, and apply softmax to the
 dimension of the input tensor. The output tensor should have the same shape as the input
 tensor, but its i-th dimension will now have a normalized probability distribution
 '''
-"Subtract the maximum value along the softmax dimension before exponentiating. This does not change the output because softmax is invariant to adding or subtracting the same constant from every element, but it prevents very large exponentials and avoids overflow."
-# maybe, instead add the tempreture ? update that 
 
 import torch
 
