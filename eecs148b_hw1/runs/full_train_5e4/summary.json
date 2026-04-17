@@ -1,0 +1,20 @@
+{
+  "total_wallclock_sec": 399.8106482028961,
+  "num_logged_points": 130,
+  "best_valid": {
+    "step": 15750,
+    "tokens_processed": 40320000,
+    "split": "valid",
+    "loss": 1.8876018524169922,
+    "perplexity": 6.6035134771977395,
+    "wallclock_sec": 392.4845280647278
+  },
+  "last_train": {
+    "step": 16000,
+    "tokens_processed": 40960000,
+    "split": "train",
+    "loss": 1.940239381790161,
+    "perplexity": 6.960416968298704,
+    "wallclock_sec": 398.806946516037
+  }
+}
