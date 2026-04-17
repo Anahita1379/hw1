@@ -161,7 +161,6 @@ cython_debug/
 data/
 eecs148b_hw1/checkpoints/
 eecs148b_hw1/tokenized_tinystories/
-eecs148b_hw1/runs/
 *.npy
 *.pt
 *.pth
